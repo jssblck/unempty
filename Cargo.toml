@@ -1,0 +1,26 @@
+[package]
+name = "unempty"
+version = "1.0.0"
+authors = ["Jessica Black <me@jessica.black>"]
+edition = "2021"
+rust-version = "1.56.0"
+description = "Non-empty data structures for Rust"
+homepage = "https://github.com/jssblck/unempty"
+repository = "https://github.com/jssblck/unempty"
+license = "Apache-2.0"
+keywords = ["non-empty", "data-structure"]
+categories = ["data-structures"]
+exclude = [".github"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["std"]
+
+# This feature flag is currently required to compile this library: it does not support a `no-std` environment.
+# 
+# However, this feature flag exists to provide the capability
+# for future support for a `no-std` environment without a major version bump.
+std = []
+
+[dependencies]
