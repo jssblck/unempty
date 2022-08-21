@@ -1,11 +1,13 @@
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
-use crate::Capacity;
+/// `Vec` stores a single item in the data structure.
+type Capacity = crate::Capacity<1>;
 
-/// The portion of `Capacity` that the non-zero portion of the data structure consumes.
-const BASE: usize = 1;
-
-/// A non-empty [`std::vec::Vec<T>`].
+/// A non-empty vector of items.
+///
+/// The first entry is statically stored. Additional items are dynamically stored with
+/// [`std::vec::Vec<T>`]; for memory and performance characteristics please review the documentation
+/// for that module and type.
 ///
 /// Does not currently support customizable allocators, nightly features, or unstable features.
 /// If any of these are desired, please submit a PR for the parts you need!
@@ -60,8 +62,8 @@ impl<T> Vec<T> {
     /// # use unempty::Capacity;
     /// let v = unempty::Vec::with_capacity("abc", Capacity::new_total(10));
     /// ```
-    pub fn with_capacity(first: T, capacity: Capacity<BASE>) -> Self {
-        let dynamic = std::vec::Vec::with_capacity(capacity.additional());
+    pub fn with_capacity(first: T, capacity: Capacity) -> Self {
+        let dynamic = std::vec::Vec::with_capacity(capacity.dynamic());
         Self { first, dynamic }
     }
 
@@ -74,8 +76,8 @@ impl<T> Vec<T> {
     /// let v = unempty::Vec::with_capacity("abc", cap);
     /// assert_eq!(v.capacity(), cap);
     /// ```
-    pub fn capacity(&self) -> Capacity<BASE> {
-        Capacity::new_additional(self.dynamic.capacity())
+    pub fn capacity(&self) -> Capacity {
+        Capacity::new_dynamic(self.dynamic.capacity())
     }
 
     /// Reserves capacity for at least additional more elements to be inserted in the given Vec<T>. The collection may reserve more space to speculatively avoid frequent reallocations. After calling reserve, capacity will be greater than or equal to self.len() + additional. Does nothing if capacity is already sufficient.
@@ -94,6 +96,24 @@ impl<T> Vec<T> {
     pub fn reserve(&mut self, additional: usize) {
         self.dynamic.reserve(additional);
     }
+
+    /// Reserves the minimum capacity for at least additional more elements to be inserted in the given Vec<T>. Unlike reserve, this will not deliberately over-allocate to speculatively avoid frequent allocations. After calling reserve_exact, capacity will be greater than or equal to self.len() + additional. Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it requests. Therefore, capacity can not be relied upon to be precisely minimal. Prefer reserve if future insertions are expected.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds isize::MAX bytes.
+    ///
+    /// # Examples
+    /// ```
+    /// let mut vec = unempty::Vec::new("abc");
+    /// vec.reserve_exact(10);
+    /// assert!(vec.capacity().total() >= 11);
+    /// ```
+    pub fn reserve_exact(&mut self, additional: usize) {
+        self.dynamic.reserve_exact(additional);
+    }
 }
 
 impl<T> Index<usize> for Vec<T> {
@@ -104,6 +124,16 @@ impl<T> Index<usize> for Vec<T> {
             &self.first
         } else {
             &self.dynamic[index - 1]
+        }
+    }
+}
+
+impl<T> IndexMut<usize> for Vec<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index == 0 {
+            &mut self.first
+        } else {
+            &mut self.dynamic[index - 1]
         }
     }
 }

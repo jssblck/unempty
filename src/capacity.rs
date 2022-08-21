@@ -13,23 +13,24 @@ use std::{
 ///
 /// # `N` constant
 ///
-/// The `N` constant is the capacity size of the non-zero portion of the data structure.
-/// For example, `unzero::Vec<T>` has a minimum size of 1, so its value for `N` is 1.
+/// The `N` constant is the capacity size of the statically sized portion of the data structure.
+/// For example, `unzero::Vec<T>` statically stores one `T`, so its value for `N` is 1.
 ///
 /// # Kinds of capacity
 ///
 /// - `total`: Total capacity means "this is the total size of the data structure,
-///   including the portion that is guaranteed by the non-empty data structure".
-/// - `additional`: Additional capacity means "this is the size of the dynamic portion of the data structure,
-///   treat the guaranteed portion separately"
+///   including the statically sized portion maintained by the non-empty data structure".
+/// - `dynamic`: Dynamic capacity means "this is the size of the dynamic portion of the data structure".
+///   Most non-empty data structures are backed by some other dynamically growable structure,
+///   this size represents the size of that structure directly.
 ///
 /// For example, consider the following cases (`Vec` in the table below refers to [`unempty::Vec`]):
 ///
-/// | Constructor                         | Total Capacity | Additional Capacity |
-/// | ----------------------------------- | -------------- | ------------------- |
-/// | `Vec::new(())`                      | 1              | 0                   |
-/// | `Vec::with_capacity(10.into())`     | 10             | 9                   |
-/// | `let v = Vec::new(()); v.push(());` | 2              | 1                   |
+/// | Constructor                         | Total Capacity | Dynamic Capacity |
+/// | ----------------------------------- | -------------- | ---------------- |
+/// | `Vec::new(())`                      | 1              | 0                |
+/// | `Vec::with_capacity(10.into())`     | 10             | 9                |
+/// | `let v = Vec::new(()); v.push(());` | 2              | 1                |
 ///
 /// # `From` conversions
 ///
@@ -40,7 +41,7 @@ use std::{
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 pub struct Capacity<const N: usize> {
     total: usize,
-    additional: usize,
+    dynamic: usize,
 }
 
 impl<const N: usize> Capacity<N> {
@@ -50,19 +51,19 @@ impl<const N: usize> Capacity<N> {
     /// For definitions on kinds of capacity, see *[Kinds of capacity]*.
     pub fn new_total(capacity: usize) -> Self {
         let total = max(capacity, N);
-        let additional = capacity - N;
-        Self { total, additional }
+        let dynamic = capacity - N;
+        Self { total, dynamic }
     }
 
-    /// Create a [`Capacity`] with the provided _additional_ capacity.
-    /// If the provided additional capacity would cause an integer overflow when accounting for `N`,
-    /// the additional capacity is reduced to `usize::MAX - N`.
+    /// Create a [`Capacity`] with the provided capacity for the dynamic portion of the data structure.
+    /// If the provided dynamic capacity would cause an integer overflow when accounting for `N`,
+    /// the dynamic capacity is reduced to `usize::MAX - N`.
     ///
     /// For definitions on kinds of capacity, see *[Kinds of capacity]*.
-    pub fn new_additional(capacity: usize) -> Self {
-        let additional = min(capacity, usize::MAX - N);
-        let total = additional + N;
-        Self { total, additional }
+    pub fn new_dynamic(capacity: usize) -> Self {
+        let dynamic = min(capacity, usize::MAX - N);
+        let total = dynamic + N;
+        Self { total, dynamic }
     }
 
     /// Reference the _total_ capacity specified.
@@ -72,11 +73,11 @@ impl<const N: usize> Capacity<N> {
         self.total
     }
 
-    /// Reference the _additional_ capacity specified.
+    /// Reference the _dynamic_ capacity specified.
     ///
     /// For definitions on kinds of capacity, see *[Kinds of capacity]*.
-    pub fn additional(&self) -> usize {
-        self.additional
+    pub fn dynamic(&self) -> usize {
+        self.dynamic
     }
 
     /// Reference the size of `N`.
@@ -104,8 +105,8 @@ impl<const N: usize> Display for Capacity<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "capacity(total: {}, additional: {})",
-            self.total, self.additional
+            "capacity(static_size: {}, dynamic_size: {})",
+            self.total, self.dynamic
         )
     }
 }
