@@ -60,8 +60,8 @@ jobs:
       run: |
         git diff --exit-code
 
-  # Ensure every crate can actually build
-  build-all:
+  # Ensure the crate can be published
+  publishable:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -70,5 +70,5 @@ jobs:
         profile: minimal
         toolchain: stable
     - uses: Swatinem/rust-cache@v1.3.0
-    - name: run build
-      run: cargo build
+    - name: run publish dry run
+      run: cargo publish --dry-run
