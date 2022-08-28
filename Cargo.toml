@@ -22,3 +22,4 @@ default = ["std"]
 std = []
 
 [dependencies]
+thiserror = "1.0.32"

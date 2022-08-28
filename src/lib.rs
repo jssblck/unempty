@@ -59,3 +59,12 @@ mod structures;
 
 pub use capacity::*;
 pub use structures::*;
+use thiserror::Error;
+
+/// Errors encountered when converting from a source data structure to an `unempty` data structure.
+#[derive(Error, Debug)]
+pub enum TryFromError {
+    /// The source data structure is empty.
+    #[error("The source data structure is empty")]
+    SourceEmpty,
+}

@@ -1,13 +1,46 @@
-use std::ops::{Index, IndexMut};
+use std::{
+    collections::VecDeque,
+    ops::{Index, IndexMut},
+};
 
 /// `Vec` stores a single item in the data structure.
 type Capacity = crate::Capacity<1>;
+
+/// Create an [`unempty::Vec`].
+///
+/// # Examples
+/// ```
+/// let v = unempty::vec![1, 2, 3];
+/// let v = unempty::vec![1];
+/// ```
+#[macro_export]
+macro_rules! vec {
+    ($item:expr) => {{
+        unempty::Vec::new($item)
+    }};
+    ($initial:expr, $( $additional:expr ),*) => {{
+        let mut v = unempty::Vec::new($initial);
+        $(
+            v.push($additional);
+        )*
+        v
+    }};
+}
+
+use crate::TryFromError;
 
 /// A non-empty vector of items.
 ///
 /// The first entry is statically stored. Additional items are dynamically stored with
 /// [`std::vec::Vec<T>`]; for memory and performance characteristics please review the documentation
 /// for that module and type.
+///
+/// # Completeness
+///
+/// `std::vec::Vec` has _many_ methods. These are being implemented as needed!
+/// Please submit a PR or create an issue if you need a method!
+///
+/// # Unstable/nightly features
 ///
 /// Does not currently support customizable allocators, nightly features, or unstable features.
 /// If any of these are desired, please submit a PR for the parts you need!
@@ -80,39 +113,133 @@ impl<T> Vec<T> {
         Capacity::new_dynamic(self.dynamic.capacity())
     }
 
-    /// Reserves capacity for at least additional more elements to be inserted in the given Vec<T>. The collection may reserve more space to speculatively avoid frequent reallocations. After calling reserve, capacity will be greater than or equal to self.len() + additional. Does nothing if capacity is already sufficient.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity exceeds isize::MAX bytes.
+    /// Returns the number of elements in the data structure, also referred to as its ‘length’.
+    /// Includes both static and dynamic portions of the data structure.
     ///
     /// # Examples
     /// ```
-    /// # use unempty::Capacity;
-    /// let mut v = unempty::Vec::new("abc");
-    /// v.reserve(10);
-    /// assert_eq!(v.capacity(), Capacity::new_additional(10));
+    /// let a = unempty::vec![1, 2, 3];
+    /// assert_eq!(a.len(), 3);
     /// ```
-    pub fn reserve(&mut self, additional: usize) {
-        self.dynamic.reserve(additional);
+    pub fn len(&self) -> usize {
+        self.dynamic.len() + 1
     }
 
-    /// Reserves the minimum capacity for at least additional more elements to be inserted in the given Vec<T>. Unlike reserve, this will not deliberately over-allocate to speculatively avoid frequent allocations. After calling reserve_exact, capacity will be greater than or equal to self.len() + additional. Does nothing if the capacity is already sufficient.
-    ///
-    /// Note that the allocator may give the collection more space than it requests. Therefore, capacity can not be relied upon to be precisely minimal. Prefer reserve if future insertions are expected.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the new capacity exceeds isize::MAX bytes.
+    /// Returns true if the vector contains no elements.
+    /// This method _always_ returns `false`, because by defition an `unempty::Vec` cannot be empty.
+    /// This method is included for API completeness and to make Clippy happy.
     ///
     /// # Examples
     /// ```
-    /// let mut vec = unempty::Vec::new("abc");
-    /// vec.reserve_exact(10);
-    /// assert!(vec.capacity().total() >= 11);
+    /// let mut v = unempty::Vec::new("abcd");
+    /// assert!(!v.is_empty());
     /// ```
-    pub fn reserve_exact(&mut self, additional: usize) {
-        self.dynamic.reserve_exact(additional);
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+
+    /// Removes the last element from a vector and returns it.
+    ///
+    /// If you’d like to pop the first element, consider using `VecDeque::pop_front` instead.
+    ///
+    /// # Consuming self
+    ///
+    /// Since this method may pop when there is only one item in the vector,
+    /// it consumes the vector and optionally returns the vector with its new size.
+    ///
+    /// This is necessary because if the vector is popped when there is only one item,
+    /// the "non-empty" guarantee of `unempty::Vec` is no longer possible.
+    ///
+    /// If this API is not desired, convert the instance to a `std::vec::Vec` and use that;
+    /// `std::vec::Vec` has no such guarantee.
+    ///
+    /// # Examples
+    /// ```
+    /// let vec = unempty::vec![1, 2];
+    ///
+    /// let (vec, last) = vec.pop();
+    /// assert_eq!(last, 2);
+    /// assert_eq!(vec, Some(unempty::vec![1]));
+    ///
+    /// let (vec, last) = vec.expect("already tested").pop();
+    /// assert_eq!(last, 1);
+    /// assert_eq!(vec, None);
+    /// ```
+    pub fn pop(mut self) -> (Option<Self>, T) {
+        if let Some(item) = self.dynamic.pop() {
+            (Some(self), item)
+        } else {
+            (None, self.first)
+        }
+    }
+
+    /// Appends an element to the back of the vector.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    ///
+    /// # Examples
+    /// ```
+    /// let mut vec = unempty::vec![1, 2];
+    /// vec.push(3);
+    /// assert_eq!(vec, unempty::vec![1, 2, 3]);
+    /// ```
+    pub fn push(&mut self, item: T) {
+        self.dynamic.push(item);
+    }
+}
+
+impl<T> TryFrom<std::vec::Vec<T>> for Vec<T> {
+    type Error = TryFromError;
+
+    fn try_from(sv: std::vec::Vec<T>) -> Result<Self, Self::Error> {
+        let mut sv = VecDeque::from(sv);
+        if let Some(first) = sv.pop_front() {
+            let mut v = Self::new(first);
+            v.extend(sv.into_iter());
+            Ok(v)
+        } else {
+            Err(TryFromError::SourceEmpty)
+        }
+    }
+}
+
+impl<T> TryFrom<VecDeque<T>> for Vec<T> {
+    type Error = TryFromError;
+
+    fn try_from(mut sv: VecDeque<T>) -> Result<Self, Self::Error> {
+        if let Some(first) = sv.pop_front() {
+            let mut v = Self::new(first);
+            v.extend(sv.into_iter());
+            Ok(v)
+        } else {
+            Err(TryFromError::SourceEmpty)
+        }
+    }
+}
+
+impl<T> From<Vec<T>> for std::vec::Vec<T> {
+    fn from(sv: Vec<T>) -> Self {
+        let mut v = std::vec::Vec::with_capacity(sv.len());
+        v.push(sv.first);
+        v.extend(sv.dynamic.into_iter());
+        v
+    }
+}
+
+impl<T> From<Vec<T>> for VecDeque<T> {
+    fn from(sv: Vec<T>) -> Self {
+        let mut v = VecDeque::with_capacity(sv.len());
+        v.push_back(sv.first);
+        v.extend(sv.dynamic.into_iter());
+        v
+    }
+}
+
+impl<T> Extend<T> for Vec<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        self.dynamic.extend(iter);
     }
 }
 
