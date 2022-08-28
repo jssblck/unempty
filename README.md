@@ -1,3 +1,9 @@
+<div align="center">
+
+[![FOSSA Status](https://app.fossa.com/api/projects/custom%2B32924%2Fgithub.com%2Fjssblck%2Funempty.svg?type=small)](https://app.fossa.com/projects/custom%2B32924%2Fgithub.com%2Fjssblck%2Funempty?ref=badge_small)
+
+</div>
+
 # unempty
 
 Non-empty data structures for Rust.
