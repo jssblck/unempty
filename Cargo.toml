@@ -1,6 +1,6 @@
 [package]
 name = "unempty"
-version = "1.0.0"
+version = "0.1.0"
 authors = ["Jessica Black <me@jessica.black>"]
 edition = "2021"
 rust-version = "1.56.0"
