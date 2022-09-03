@@ -3,7 +3,30 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-/// `Vec` stores a single item in the data structure.
+use crate::TryFromError;
+
+/// A non-empty vector of items.
+///
+/// The first entry is statically stored. Additional items are dynamically stored with
+/// [`std::vec::Vec<T>`]; for memory and performance characteristics please review the documentation
+/// for that module and type.
+///
+/// # Completeness
+///
+/// `std::vec::Vec` has _many_ methods. These are being implemented as needed.
+/// Please submit a PR or create an issue if you need a method!
+///
+/// # Unstable/nightly features
+///
+/// Does not currently support customizable allocators, nightly features, or unstable features.
+/// If any of these are desired, please submit a PR for the parts you need!
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Vec<T> {
+    first: T,
+    dynamic: std::vec::Vec<T>,
+}
+
+/// This structure stores a single item statically.
 type Capacity = crate::Capacity<1>;
 
 /// Create an [`unempty::Vec`].
@@ -25,29 +48,6 @@ macro_rules! vec {
         )*
         v
     }};
-}
-
-use crate::TryFromError;
-
-/// A non-empty vector of items.
-///
-/// The first entry is statically stored. Additional items are dynamically stored with
-/// [`std::vec::Vec<T>`]; for memory and performance characteristics please review the documentation
-/// for that module and type.
-///
-/// # Completeness
-///
-/// `std::vec::Vec` has _many_ methods. These are being implemented as needed!
-/// Please submit a PR or create an issue if you need a method!
-///
-/// # Unstable/nightly features
-///
-/// Does not currently support customizable allocators, nightly features, or unstable features.
-/// If any of these are desired, please submit a PR for the parts you need!
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Vec<T> {
-    first: T,
-    dynamic: std::vec::Vec<T>,
 }
 
 impl<T> Vec<T> {
